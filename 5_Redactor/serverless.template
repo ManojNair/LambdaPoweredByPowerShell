@@ -1,0 +1,59 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Transform": "AWS::Serverless-2016-10-31",
+    "Description": "AWS Serverless API to redact text that might contain sensitive information.",
+    "Resources": {
+        "RedactionFunctionRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+                    "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess",
+                    "arn:aws:iam::aws:policy/ComprehendReadOnly"
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "RedactionService": {
+            "Type": "AWS::Serverless::Function",
+            "Properties": {
+                "Handler": "Redactor::Redactor.Bootstrap::ExecuteFunction",
+                "Runtime": "dotnetcore2.1",
+                "CodeUri": "./build/Redactor.zip",
+                "Description": "Function to redact text",
+                "MemorySize": 512,
+                "Timeout": 30,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "RedactionFunctionRole",
+                        "Arn"
+                    ]
+                },
+                "Events": {
+                    "PostResource": {
+                        "Type": "Api",
+                        "Properties": {
+                            "Path": "/",
+                            "Method": "POST"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
